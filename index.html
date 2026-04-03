@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kelime Tekrar — Flashcard & Quiz</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; min-height: 100vh; }
+
+.top-bar { background: #1a1a2e; color: white; padding: 1rem 1.5rem; text-align: center; }
+.top-bar h1 { font-size: 18px; font-weight: 500; letter-spacing: 0.5px; }
+.top-bar p { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+#app { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+.card { background: white; border-radius: 12px; border: 1px solid #e8e6e0; padding: 1.25rem; margin-bottom: 1rem; }
+
+button { font-size: 13px; padding: 9px 16px; border-radius: 8px; border: 1px solid #ccc; background: white; color: #1a1a1a; cursor: pointer; transition: all 0.15s; }
+button:hover { background: #f0f0f0; }
+
+/* SETUP SCREEN */
+.setup-title { font-size: 17px; font-weight: 500; margin-bottom: 6px; }
+.setup-desc { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 1.25rem; }
+
+.step-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.25rem; }
+.step { display: flex; gap: 12px; align-items: flex-start; }
+.step-num { background: #1a1a2e; color: white; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 13px; color: #444; line-height: 1.6; }
+.step-text b { color: #1a1a1a; }
+.step-text a { color: #1a1a2e; }
+.step-text code { background: #f0ede8; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+
+.url-row { display: flex; gap: 8px; margin-top: 1rem; }
+.url-row input { flex: 1; font-size: 13px; padding: 9px 12px; border-radius: 8px; border: 1px solid #ddd; outline: none; background: #fafafa; }
+.url-row input:focus { border-color: #1a1a2e; background: white; }
+.url-row input::placeholder { color: #bbb; }
+.btn-primary { background: #1a1a2e; color: white; border-color: #1a1a2e; font-weight: 500; }
+.btn-primary:hover { background: #2d2d6b; }
+
+#load-error { font-size: 12px; color: #a32d2d; margin-top: 8px; display: none; }
+
+/* MAIN APP */
+#load-status { text-align:center; font-size:13px; color:#888; padding:1rem 0; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stat-box { background: #f5f4f0; border-radius: 8px; padding: 10px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 500; }
+.stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.f-btn { font-size: 12px; padding: 5px 12px; border-radius: 100px; border: 1px solid #ddd; background: white; color: #666; cursor: pointer; }
+.f-btn.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+.sort-sel { font-size: 12px; padding: 5px 8px; border-radius: 8px; border: 1px solid #ddd; background: white; margin-left: auto; }
+.dir-toggle { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.dir-btn { font-size: 12px; padding: 5px 12px; border-radius: 100px; border: 1px solid #ddd; background: white; color: #666; cursor: pointer; }
+.dir-btn.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+
+.mode-tabs { display: flex; gap: 2px; background: #f0ede8; border-radius: 10px; padding: 3px; }
+.mode-tab { flex: 1; text-align: center; font-size: 13px; padding: 8px; border-radius: 8px; border: none; background: transparent; color: #666; cursor: pointer; transition: all 0.15s; }
+.mode-tab.active { background: white; color: #1a1a1a; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+.flashcard-wrap { perspective: 1000px; height: 230px; cursor: pointer; margin-bottom: 1rem; }
+.flashcard { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.4s; }
+.flashcard.flipped { transform: rotateY(180deg); }
+.card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; border: 1px solid #e8e6e0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
+.card-back { transform: rotateY(180deg); background: #fafdf7; }
+.card-word { font-size: 30px; font-weight: 500; margin-bottom: 8px; }
+.card-type-tag { font-size: 11px; color: #888; background: #f0ede8; padding: 3px 10px; border-radius: 100px; }
+.card-meaning { font-size: 20px; font-weight: 500; color: #1a6b3a; margin-bottom: 10px; }
+.card-sentence { font-size: 13px; color: #666; font-style: italic; line-height: 1.55; max-width: 460px; }
+.card-hint { font-size: 11px; color: #bbb; position: absolute; bottom: 14px; }
+.speak-btn { position: absolute; top: 12px; right: 14px; font-size: 15px; background: none; border: none; padding: 4px 6px; cursor: pointer; color: #bbb; border-radius: 6px; }
+.speak-btn:hover { color: #1a1a2e; background: #f0ede8; }
+
+.fc-actions { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+.btn-know { background: #eaf3de; color: #3B6D11; border-color: #c0dd97; font-weight: 500; }
+.btn-study { background: #fcebeb; color: #a32d2d; border-color: #f7c1c1; font-weight: 500; }
+.fc-nav { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.fc-nav span { font-size: 13px; color: #666; min-width: 60px; text-align: center; }
+.fc-meta { text-align: center; margin-top: 8px; font-size: 11px; color: #aaa; }
+.diff-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+
+.quiz-q-box { background: #fafafa; border: 1px solid #e8e6e0; border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1rem; position: relative; }
+.quiz-word { font-size: 28px; font-weight: 500; margin-bottom: 6px; }
+.quiz-sentence { font-size: 13px; color: #888; font-style: italic; line-height: 1.5; margin-top: 6px; }
+.quiz-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.quiz-opt { text-align: center; font-size: 14px; padding: 12px 14px; border-radius: 8px; border: 1px solid #ddd; background: white; color: #1a1a1a; cursor: pointer; transition: all 0.15s; line-height: 1.4; }
+.quiz-opt:hover:not(:disabled) { background: #f5f4f0; }
+.quiz-opt.correct { background: #eaf3de; border-color: #c0dd97; color: #3B6D11; }
+.quiz-opt.wrong { background: #fcebeb; border-color: #f7c1c1; color: #a32d2d; }
+.quiz-result { text-align: center; font-size: 14px; padding: 6px 0; font-weight: 500; }
+.quiz-footer { text-align: center; font-size: 12px; color: #888; margin-top: 8px; }
+
+.fill-q-box { background: #fafafa; border: 1px solid #e8e6e0; border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1rem; }
+.fill-sentence { font-size: 17px; line-height: 1.9; color: #1a1a1a; margin-bottom: 1rem; }
+.fill-input { font-size: 15px; padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; width: 100%; max-width: 300px; text-align: center; outline: none; margin-bottom: 8px; }
+.fill-input:focus { border-color: #1a1a2e; }
+.fill-input.correct { border-color: #3B6D11; background: #eaf3de; color: #3B6D11; }
+.fill-input.wrong { border-color: #a32d2d; background: #fcebeb; color: #a32d2d; }
+.fill-answer { font-size: 13px; margin-top: 6px; font-weight: 500; }
+
+.reset-btn { font-size: 11px; color: #aaa; background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; margin-left: auto; }
+.reset-btn:hover { color: #666; background: none; }
+
+#setup-screen { display: block; }
+#main { display: none; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>📖 Kelime Tekrar</h1>
+  <p>Google Sheets → Flashcard · Quiz · Cümle Tamamla</p>
+</div>
+
+<div id="app">
+
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen">
+    <div class="card">
+      <div class="setup-title">Başlamak için 3 adım</div>
+      <div class="setup-desc">Google Sheets'teki kelime listenizi bağlayın, otomatik senkronize olsun.</div>
+
+      <div class="step-list">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <b>Google Sheets şablonunu kopyala</b><br>
+            <a href="https://docs.google.com/spreadsheets/d/1_SABLON_ID_/copy" target="_blank">→ Şablonu Drive'ıma kopyala</a> linkine tıkla, kendi Drive'ına kopyalanır.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <b>Apps Script'i kur</b><br>
+            Sheets'te <code>Uzantılar → Apps Script</code> aç → <code>Code.gs</code> içeriğini sil → <a href="https://github.com/KULLANICI/flashcard-app/blob/main/apps-script.gs" target="_blank">bu kodu</a> yapıştır → Kaydet → <code>Dağıt → Yeni dağıtım</code> → Tür: <b>Web uygulaması</b> → Erişim: <b>Herkes</b> → Dağıt → URL'yi kopyala.
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <b>URL'yi aşağıya yapıştır</b><br>
+            Kopyaladığın Apps Script URL'sini buraya yapıştır.
+          </div>
+        </div>
+      </div>
+
+      <div class="url-row">
+        <input type="text" id="api-url" placeholder="https://script.google.com/macros/s/..." />
+        <button class="btn-primary" onclick="connectAPI()">Bağlan</button>
+      </div>
+      <div id="load-error"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="load-status"></div>
+
+  <div id="main">
+    <div class="card stats-row">
+      <div class="stat-box"><div class="stat-num" id="s-total">0</div><div class="stat-lbl">Toplam</div></div>
+      <div class="stat-box"><div class="stat-num" id="s-known" style="color:#3B6D11;">0</div><div class="stat-lbl">Biliniyor</div></div>
+      <div class="stat-box"><div class="stat-num" id="s-study" style="color:#a32d2d;">0</div><div class="stat-lbl">Çalışılacak</div></div>
+      <div class="stat-box"><div class="stat-num" id="s-pct">0%</div><div class="stat-lbl">Başarı</div></div>
+    </div>
+
+    <div class="card">
+      <div class="filter-row">
+        <span style="font-size:12px;color:#888;">Sırala:</span>
+        <select class="sort-sel" onchange="setSort(this.value)">
+          <option value="new">En yeni önce</option>
+          <option value="old">En eski önce</option>
+          <option value="diff-desc">Zor önce</option>
+          <option value="diff-asc">Kolay önce</option>
+        </select>
+        <button class="reset-btn" onclick="resetApp()">↩ Bağlantıyı değiştir</button>
+      </div>
+      <div class="dir-toggle">
+        <span style="font-size:12px;color:#888;">Yön:</span>
+        <button class="dir-btn active" id="dir-btn-1" onclick="setDir('en-tr',this)">Yabancı Dil → Türkçe</button>
+        <button class="dir-btn" id="dir-btn-2" onclick="setDir('tr-en',this)">Türkçe → Yabancı Dil</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="mode-tabs" style="margin-bottom:1.25rem;">
+        <button class="mode-tab active" onclick="setMode('flash',this)">Flashcard</button>
+        <button class="mode-tab" onclick="setMode('quiz',this)">Quiz</button>
+        <button class="mode-tab" onclick="setMode('fill',this)">Cümle Tamamla</button>
+      </div>
+
+      <!-- FLASHCARD -->
+      <div id="flash-mode">
+        <div class="flashcard-wrap" onclick="flipCard()">
+          <div class="flashcard" id="flashcard">
+            <div class="card-face">
+              <button class="speak-btn" onclick="event.stopPropagation();speakCurrent()" title="Sesli dinle">🔊</button>
+              <div class="card-word" id="fc-word"></div>
+              <div class="card-type-tag" id="fc-type"></div>
+              <div class="card-hint">Görmek için tıkla</div>
+            </div>
+            <div class="card-face card-back">
+              <div class="card-meaning" id="fc-meaning"></div>
+              <div class="card-sentence" id="fc-sentence"></div>
+              <div class="card-hint">Tekrar çevirmek için tıkla</div>
+            </div>
+          </div>
+        </div>
+        <div class="fc-actions" id="fc-actions" style="display:none;">
+          <button class="btn-study" onclick="markCard(false)">↩ Tekrar çalış</button>
+          <button class="btn-know" onclick="markCard(true)">✓ Biliyorum!</button>
+        </div>
+        <div class="fc-nav">
+          <button onclick="prevCard()">←</button>
+          <span id="fc-counter">0 / 0</span>
+          <button onclick="nextCard()">→</button>
+          <button onclick="shuffleCards()" style="margin-left:8px;font-size:12px;">🔀 Karıştır</button>
+        </div>
+        <div class="fc-meta" id="fc-meta"></div>
+      </div>
+
+      <!-- QUIZ -->
+      <div id="quiz-mode" style="display:none;">
+        <div class="quiz-q-box">
+          <button class="speak-btn" onclick="speakCurrent()" title="Sesli dinle">🔊</button>
+          <div style="font-size:11px;color:#aaa;margin-bottom:8px;" id="quiz-dir-label">Bu kelimenin Türkçe anlamı nedir?</div>
+          <div class="quiz-word" id="quiz-word"></div>
+          <div class="quiz-sentence" id="quiz-sentence"></div>
+        </div>
+        <div class="quiz-opts" id="quiz-opts"></div>
+        <div class="quiz-result" id="quiz-result" style="display:none;"></div>
+        <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center;">
+          <button id="quiz-next" onclick="nextQuiz()" style="display:none;">Sonraki →</button>
+          <button onclick="initQuiz()">🔀 Karıştır</button>
+        </div>
+        <div class="quiz-footer">
+          Soru <span id="quiz-counter">1</span> &nbsp;·&nbsp; Skor: <span id="quiz-score">0</span> / <span id="quiz-asked">0</span>
+        </div>
+      </div>
+
+      <!-- FILL IN THE BLANK -->
+      <div id="fill-mode" style="display:none;">
+        <div class="fill-q-box">
+          <div style="font-size:11px;color:#aaa;margin-bottom:12px;">Boşluğu doğru kelimeyle doldurun</div>
+          <div class="fill-sentence" id="fill-sentence"></div>
+          <input class="fill-input" type="text" id="fill-input" placeholder="Cevabınızı yazın..." onkeydown="if(event.key==='Enter')checkFill()" />
+          <div class="fill-answer" id="fill-answer" style="display:none;"></div>
+        </div>
+        <div style="text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button onclick="checkFill()">Kontrol Et</button>
+          <button id="fill-next" onclick="nextFill()" style="display:none;">Sonraki →</button>
+          <button onclick="initFill()">🔀 Karıştır</button>
+        </div>
+        <div class="quiz-footer" style="margin-top:10px;">
+          Soru <span id="fill-counter">1</span> &nbsp;·&nbsp; Skor: <span id="fill-score">0</span> / <span id="fill-asked">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let API_URL = '';
+let words = [], filtered = [], currentSort = 'new', direction = 'en-tr';
+let fcIdx = 0, fcFlipped = false;
+let known = {}, study = {};
+let currentWord = null;
+let quizQueue = [], quizIdx = 0, quizScore = 0, quizAsked = 0, quizAnswered = false;
+let fillQueue = [], fillIdx = 0, fillScore = 0, fillAsked = 0, fillAnswered = false;
+
+// Kaydedilmiş URL varsa yükle
+window.onload = () => {
+  const saved = localStorage.getItem('flashcard_api_url');
+  if (saved) {
+    API_URL = saved;
+    document.getElementById('api-url').value = saved;
+    loadSheets();
+  }
+};
+
+async function connectAPI() {
+  const input = document.getElementById('api-url').value.trim();
+  const err = document.getElementById('load-error');
+  if (!input || !input.includes('script.google.com')) {
+    err.textContent = 'Geçerli bir Apps Script URL\'si girin.';
+    err.style.display = 'block';
+    return;
+  }
+  API_URL = input;
+  localStorage.setItem('flashcard_api_url', API_URL);
+  err.style.display = 'none';
+  loadSheets();
+}
+
+async function loadSheets() {
+  const st = document.getElementById('load-status');
+  st.textContent = 'Kelimeler yükleniyor...';
+  document.getElementById('setup-screen').style.display = 'none';
+  try {
+    const r = await fetch(API_URL);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    parseJSON(data);
+    if (words.length === 0) {
+      st.textContent = 'Henüz kelime eklenmemiş. Sheets\'e kelime ekleyip sayfayı yenile.';
+      document.getElementById('main').style.display = 'block';
+      updateStats();
+      return;
+    }
+    st.textContent = '';
+    init();
+  } catch(e) {
+    st.textContent = '';
+    document.getElementById('setup-screen').style.display = 'block';
+    const err = document.getElementById('load-error');
+    err.textContent = '⚠ Bağlanılamadı. URL\'yi kontrol edip tekrar deneyin.';
+    err.style.display = 'block';
+    localStorage.removeItem('flashcard_api_url');
+  }
+}
+
+function resetApp() {
+  localStorage.removeItem('flashcard_api_url');
+  API_URL = ''; words = []; filtered = []; known = {}; study = {};
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+  document.getElementById('api-url').value = '';
+  document.getElementById('load-error').style.display = 'none';
+}
+
+function parseJSON(data) {
+  words = data.map(row => {
+    const get = (keys) => {
+      for (const k of keys) {
+        for (const rk of Object.keys(row)) {
+          if (rk.toLowerCase().includes(k.toLowerCase())) return String(row[rk]||'').trim();
+        }
+      }
+      return '';
+    };
+    const rawDate = get(['tarih','date','eklenme']);
+    const cleanDate = rawDate ? rawDate.replace(/T.*/, '').split('-').reverse().join('.') : '';
+    return {
+      word: get(['ingilizce','english','word','kelime','term','foreign']),
+      meaning: get(['türkçe','anlam','meaning','definition','türkce']),
+      type: get(['kelime türü','tür','type','kind']),
+      sentence: get(['Örnek Cümle','örnek cümle','örnek','sentence','cümle','example']),
+      difficulty: parseInt(get(['zorluk','difficulty']))||null,
+      who: get(['kim','who','ekl']),
+      date: cleanDate
+    };
+  }).filter(w => w.word && w.meaning);
+}
+
+function init() {
+  document.getElementById('main').style.display = 'block';
+  applySort(); updateStats(); initFlash(); initQuiz(); initFill();
+}
+
+function applySort() {
+  filtered = [...words].sort((a,b) => {
+    if (currentSort==='new') return parseDate(b.date)-parseDate(a.date);
+    if (currentSort==='old') return parseDate(a.date)-parseDate(b.date);
+    if (currentSort==='diff-desc') return (b.difficulty||0)-(a.difficulty||0);
+    if (currentSort==='diff-asc') return (a.difficulty||0)-(b.difficulty||0);
+    return 0;
+  });
+}
+
+function parseDate(d) {
+  if (!d) return 0;
+  const parts = d.split('.');
+  if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime()||0;
+  return new Date(d).getTime()||0;
+}
+
+function updateStats() {
+  const k = Object.values(known).filter(Boolean).length;
+  const s = Object.values(study).filter(Boolean).length;
+  const total = words.length;
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-known').textContent = k;
+  document.getElementById('s-study').textContent = s;
+  document.getElementById('s-pct').textContent = total>0 ? Math.round(k/total*100)+'%' : '0%';
+}
+
+function setSort(v) { currentSort=v; applySort(); initFlash(); initQuiz(); initFill(); }
+
+function setDir(d, btn) {
+  direction = d;
+  document.querySelectorAll('.dir-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('quiz-dir-label').textContent = d==='en-tr'
+    ? 'Bu kelimenin Türkçe anlamı nedir?'
+    : 'Bu anlamın yabancı dildeki karşılığı nedir?';
+  initFlash(); initQuiz(); initFill();
+}
+
+function speakCurrent() {
+  if (!currentWord) return;
+  const text = direction==='en-tr' ? currentWord.word : currentWord.meaning;
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = direction==='en-tr' ? 'en-US' : 'tr-TR';
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
+}
+
+// ── FLASHCARD ──
+function initFlash() {
+  fcIdx=0; fcFlipped=false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  document.getElementById('fc-actions').style.display='none';
+  renderFlash();
+}
+
+const diffColors = {1:'#63991a',2:'#ef9f27',3:'#ef9f27',4:'#e24b4a',5:'#a32d2d'};
+
+function renderFlash() {
+  if (!filtered.length) { document.getElementById('fc-word').textContent='Kelime yok'; return; }
+  fcIdx = Math.max(0, Math.min(fcIdx, filtered.length-1));
+  const w = filtered[fcIdx];
+  currentWord = w;
+  document.getElementById('fc-word').textContent = direction==='en-tr' ? w.word : w.meaning;
+  document.getElementById('fc-type').textContent = w.type||'';
+  document.getElementById('fc-meaning').textContent = direction==='en-tr' ? w.meaning : w.word;
+  document.getElementById('fc-sentence').textContent = w.sentence||'';
+  document.getElementById('fc-counter').textContent = `${fcIdx+1} / ${filtered.length}`;
+  const d = w.difficulty;
+  const meta = [w.who ? 'Ekleyen: '+w.who : '', w.date||''].filter(Boolean).join(' · ');
+  const dHtml = d ? `<span class="diff-dot" style="background:${diffColors[d]||'#888'}"></span>Zorluk ${d}` : '';
+  document.getElementById('fc-meta').innerHTML = `<span style="color:#aaa;">${meta}</span>${d?' &nbsp;·&nbsp; '+dHtml:''}`;
+  fcFlipped=false;
+  document.getElementById('flashcard').classList.remove('flipped');
+  document.getElementById('fc-actions').style.display='none';
+}
+
+function flipCard() {
+  fcFlipped=!fcFlipped;
+  document.getElementById('flashcard').classList.toggle('flipped',fcFlipped);
+  document.getElementById('fc-actions').style.display=fcFlipped?'flex':'none';
+}
+
+function markCard(isKnown) {
+  const w = filtered[fcIdx];
+  if (isKnown) { known[w.word]=true; delete study[w.word]; }
+  else { study[w.word]=true; delete known[w.word]; }
+  updateStats();
+  fcIdx=(fcIdx+1)%filtered.length;
+  resetAndRender();
+}
+
+function prevCard() { fcIdx=(fcIdx-1+filtered.length)%filtered.length; resetAndRender(); }
+function nextCard() { fcIdx=(fcIdx+1)%filtered.length; resetAndRender(); }
+
+function resetAndRender() {
+  const card=document.getElementById('flashcard');
+  card.style.transition='none';
+  card.classList.remove('flipped');
+  void card.offsetWidth;
+  card.style.transition='';
+  fcFlipped=false;
+  document.getElementById('fc-actions').style.display='none';
+  renderFlash();
+}
+
+function shuffleCards() {
+  for(let i=filtered.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[filtered[i],filtered[j]]=[filtered[j],filtered[i]];}
+  fcIdx=0; resetAndRender();
+}
+
+// ── QUIZ ──
+function shuffleArr(arr) { for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} }
+
+function initQuiz() {
+  quizScore=0; quizAsked=0; quizAnswered=false;
+  quizQueue=[...filtered]; shuffleArr(quizQueue); quizIdx=0;
+  renderQuiz();
+}
+
+function renderQuiz() {
+  if (!quizQueue.length) return;
+  const w = quizQueue[quizIdx%quizQueue.length];
+  currentWord=w;
+  document.getElementById('quiz-word').textContent = direction==='en-tr' ? w.word : w.meaning;
+  document.getElementById('quiz-sentence').textContent = w.sentence||'';
+  document.getElementById('quiz-result').style.display='none';
+  document.getElementById('quiz-next').style.display='none';
+  document.getElementById('quiz-counter').textContent = quizIdx+1;
+  document.getElementById('quiz-score').textContent = quizScore;
+  document.getElementById('quiz-asked').textContent = quizAsked;
+  quizAnswered=false;
+
+  const correct = direction==='en-tr' ? w.meaning : w.word;
+  const opts=[w];
+  const pool=words.filter(x=>x.word!==w.word);
+  shuffleArr(pool);
+  for(let i=0;i<Math.min(3,pool.length);i++) opts.push(pool[i]);
+  shuffleArr(opts);
+
+  const c=document.getElementById('quiz-opts');
+  c.innerHTML='';
+  opts.forEach(opt=>{
+    const ans = direction==='en-tr' ? opt.meaning : opt.word;
+    const btn=document.createElement('button');
+    btn.className='quiz-opt';
+    btn.textContent=ans;
+    btn.onclick=()=>checkQuiz(btn,ans,correct,w);
+    c.appendChild(btn);
+  });
+}
+
+function checkQuiz(btn, selected, correct, w) {
+  if (quizAnswered) return;
+  quizAnswered=true; quizAsked++;
+  const ok=selected===correct;
+  if (ok) { quizScore++; btn.classList.add('correct'); known[w.word]=true; delete study[w.word]; }
+  else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.quiz-opt').forEach(b=>{ if(b.textContent===correct) b.classList.add('correct'); });
+    quizQueue.push(w);
+  }
+  document.querySelectorAll('.quiz-opt').forEach(b=>b.disabled=true);
+  const res=document.getElementById('quiz-result');
+  res.style.display='block';
+  res.textContent=ok?'✓ Doğru!':'✗ Yanlış — tekrar gelecek!';
+  res.style.color=ok?'#3B6D11':'#a32d2d';
+  document.getElementById('quiz-next').style.display='inline';
+  document.getElementById('quiz-score').textContent=quizScore;
+  document.getElementById('quiz-asked').textContent=quizAsked;
+  updateStats();
+}
+
+function nextQuiz() { quizIdx++; renderQuiz(); }
+
+// ── CÜMLE TAMAMLAMA ──
+function findWordInSentence(sentence, word) {
+  let re = new RegExp('\\b'+word+'\\w*','i');
+  let m = sentence.match(re);
+  if (m) return m[0];
+  if (word.length>=4) {
+    const stem=word.substring(0, Math.max(4, word.length-2));
+    re=new RegExp('\\b'+stem+'\\w*','i');
+    m=sentence.match(re);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+function initFill() {
+  fillScore=0; fillAsked=0; fillAnswered=false;
+  const withSentence=filtered.filter(w=>w.sentence&&findWordInSentence(w.sentence,w.word));
+  fillQueue=withSentence.length>=3?withSentence:[...filtered];
+  shuffleArr(fillQueue); fillIdx=0;
+  renderFill();
+}
+
+function renderFill() {
+  const el=document.getElementById('fill-sentence');
+  if (!fillQueue.length) { el.textContent='Kelime bulunamadı.'; return; }
+  const w=fillQueue[fillIdx%fillQueue.length];
+  currentWord=w; fillAnswered=false;
+
+  const matched=w.sentence?findWordInSentence(w.sentence,w.word):null;
+  if (matched) {
+    const re=new RegExp('\\b'+matched+'\\b','i');
+    el.textContent=w.sentence.replace(re,'______');
+    el.dataset.matched=matched;
+    el.dataset.mode='sentence';
+  } else {
+    el.textContent='"'+w.meaning+'"\n\nBu anlamın yabancı dildeki karşılığı nedir?';
+    el.dataset.matched=w.word;
+    el.dataset.mode='translate';
+  }
+
+  const inp=document.getElementById('fill-input');
+  inp.value=''; inp.className='fill-input'; inp.disabled=false;
+  document.getElementById('fill-answer').style.display='none';
+  document.getElementById('fill-next').style.display='none';
+  document.getElementById('fill-counter').textContent=fillIdx+1;
+  document.getElementById('fill-score').textContent=fillScore;
+  document.getElementById('fill-asked').textContent=fillAsked;
+  setTimeout(()=>inp.focus(),50);
+}
+
+function checkFill() {
+  if (fillAnswered||!fillQueue.length) return;
+  const w=fillQueue[fillIdx%fillQueue.length];
+  const inp=document.getElementById('fill-input');
+  const ans=inp.value.trim().toLowerCase();
+  const matched=(document.getElementById('fill-sentence').dataset.matched||w.word).toLowerCase();
+  const ok=ans===w.word.toLowerCase()||ans===matched;
+  fillAnswered=true; fillAsked++;
+  inp.classList.add(ok?'correct':'wrong');
+  inp.disabled=true;
+
+  const ansDiv=document.getElementById('fill-answer');
+  if (ok) {
+    ansDiv.textContent='✓ Doğru!'; ansDiv.style.color='#3B6D11';
+    fillScore++; known[w.word]=true; delete study[w.word];
+  } else {
+    ansDiv.textContent='✗ Yanlış. Doğru: "'+w.word+'" — tekrar gelecek!';
+    ansDiv.style.color='#a32d2d'; fillQueue.push(w);
+  }
+  ansDiv.style.display='block';
+  document.getElementById('fill-next').style.display='inline';
+  document.getElementById('fill-score').textContent=fillScore;
+  document.getElementById('fill-asked').textContent=fillAsked;
+  updateStats();
+}
+
+function nextFill() { fillIdx++; renderFill(); }
+
+function setMode(mode, btn) {
+  document.querySelectorAll('.mode-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('flash-mode').style.display=mode==='flash'?'block':'none';
+  document.getElementById('quiz-mode').style.display=mode==='quiz'?'block':'none';
+  document.getElementById('fill-mode').style.display=mode==='fill'?'block':'none';
+  if (mode==='quiz') initQuiz();
+  if (mode==='fill') initFill();
+}
+</script>
+</body>
+</html>
