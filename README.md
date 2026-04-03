@@ -27,9 +27,11 @@ Google Sheets'te **Uzantılar → Apps Script** aç.
 Açılan editördeki kodu tamamen sil, [apps-script.gs](./apps-script.gs) dosyasındaki kodu yapıştır ve kaydet.
 
 **Dağıt → Yeni dağıtım** tıkla:
-- Tür: **Web uygulaması**
+- Türü seçin: **Web uygulaması**
 - Erişim: **Herkes**
-- **Dağıt** → çıkan URL'yi kopyala
+- **Dağıt** ;
+- Erişim yetkisi isterse gerekli izinleri ver ve devam et.
+- Açılan ekranda web uygulaması altında çıkan URL'yi kopyala
 
 ---
 
